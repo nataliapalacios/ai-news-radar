@@ -6,8 +6,10 @@ export const WatchItem = z.object({
   name: z.string().min(1),
   /** Terms matched on word boundaries against KEV, NVD descriptions and headlines. */
   match: z.array(z.string().min(2)).min(1),
-  /** NVD CPE "vendor:product" pairs. When set, an NVD CVE must list one of them. */
-  cpe: z.array(z.string().regex(/^[^:]+:[^:]+$/, "expected vendor:product")).default([]),
+  /** NVD CPE "vendor:product" pairs ("vendor:*" = any product). When set, an NVD CVE must list one of them. */
+  cpe: z.array(z.string().regex(/^[^:*]+:[^:]+$/, "expected vendor:product")).default([]),
+  /** Alert on critical NVD scores. Off for huge vendors, where only CISA KEV and news early signals alert. */
+  nvd: z.boolean().default(true),
   vendor_feed: z.url().optional(),
 });
 export type WatchItem = z.infer<typeof WatchItem>;

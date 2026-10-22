@@ -5,16 +5,17 @@ export interface NvdCve {
   published: string;
   description: string;
   cvss: number | null;
-  /** "vendor:product" pairs from the CVE's CPE configurations. */
+  /** "vendor:product" pairs the CVE marks as vulnerable. */
   cpes: string[];
   references: string[];
 }
 
-const PAGE = 2000;
+// Smaller pages answer faster; NVD often times out on 2000-result pages.
+const PAGE = 500;
 
 export interface NvdQuery {
   keyword?: string;
-  /** "vendor:product": only CVEs whose configurations match this CPE. */
+  /** "vendor:product" or "vendor:*": only CVEs whose configurations match this CPE. */
   cpe?: string;
   apiKey?: string;
   by?: "published" | "modified";
@@ -24,12 +25,12 @@ export interface NvdQuery {
 export async function fetchNvdForWatchlist(
   baseUrl: string,
   allow: string[],
-  watch: { match: string[]; cpe: string[] }[],
+  watch: { match: string[]; cpe: string[]; nvd: boolean }[],
   start: Date,
   end: Date,
   opts: Pick<NvdQuery, "apiKey" | "by"> = {},
 ): Promise<NvdCve[]> {
-  const queries = watch.flatMap((w): NvdQuery[] =>
+  const queries = watch.filter((w) => w.nvd).flatMap((w): NvdQuery[] =>
     w.cpe.length ? w.cpe.map((cpe) => ({ cpe })) : w.match.map((keyword) => ({ keyword })),
   );
   const byId = new Map<string, NvdCve>();
@@ -61,13 +62,15 @@ export async function fetchNvd(
       startIndex: String(index),
     });
     if (opts.keyword) q.set("keywordSearch", opts.keyword);
-    if (opts.cpe) q.set("virtualMatchString", `cpe:2.3:a:${opts.cpe}`);
-    const res = await safeFetch(`${baseUrl}?${q}`, {
-      allow,
-      timeoutMs: 60_000,
-      maxBytes: 60_000_000,
-      headers: opts.apiKey ? { apiKey: opts.apiKey } : {},
-    });
+    if (opts.cpe) q.set("virtualMatchString", `cpe:2.3:*:${opts.cpe}`);
+    const res = await withRetry(() =>
+      safeFetch(`${baseUrl}?${q}`, {
+        allow,
+        timeoutMs: 90_000,
+        maxBytes: 60_000_000,
+        headers: opts.apiKey ? { apiKey: opts.apiKey } : {},
+      }),
+    );
     if (res.status !== 200) throw new Error(`NVD: HTTP ${res.status}`);
     const page = JSON.parse(res.body) as { totalResults: number; vulnerabilities: { cve: RawCve }[] };
     out.push(...page.vulnerabilities.map((v) => toCve(v.cve)));
@@ -81,7 +84,7 @@ interface RawCve {
   published: string;
   descriptions?: { lang: string; value: string }[];
   metrics?: Record<string, { cvssData?: { baseScore?: number } }[] | undefined>;
-  configurations?: { nodes?: { cpeMatch?: { criteria?: string }[] }[] }[];
+  configurations?: { nodes?: { cpeMatch?: { criteria?: string; vulnerable?: boolean }[] }[] }[];
   references?: { url: string }[];
 }
 
@@ -95,6 +98,8 @@ export function toCve(raw: RawCve): NvdCve {
   for (const c of raw.configurations ?? [])
     for (const n of c.nodes ?? [])
       for (const cm of n.cpeMatch ?? []) {
+        // Platform entries ("runs on Chrome / Linux") have vulnerable: false; only the affected product counts.
+        if (cm.vulnerable === false) continue;
         const parts = cm.criteria?.split(":");
         if (parts && parts.length > 4) cpes.add(`${parts[3]}:${parts[4]}`.toLowerCase());
       }
@@ -109,3 +114,16 @@ export function toCve(raw: RawCve): NvdCve {
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** NVD is often slow or briefly unavailable: retry timeouts and 5xx twice. */
+async function withRetry<T extends { status: number }>(fn: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fn();
+      if (res.status < 500 || attempt >= 2) return res;
+    } catch (e) {
+      if ((e as Error).name !== "TimeoutError" || attempt >= 2) throw e;
+    }
+    await sleep(10_000 * (attempt + 1));
+  }
+}

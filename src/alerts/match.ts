@@ -93,7 +93,8 @@ export function matchKev(entries: KevEntry[], watch: WatchItem[], now: Date, loo
 }
 
 export function cveMatchesWatch(c: NvdCve, w: WatchItem): boolean {
-  if (w.cpe.length) return c.cpes.some((p) => w.cpe.includes(p));
+  if (w.cpe.length)
+    return c.cpes.some((p) => w.cpe.some((x) => x === p || (x.endsWith(":*") && p.startsWith(x.slice(0, -1)))));
   return matchesAny(c.description, w.match);
 }
 
@@ -101,7 +102,7 @@ export function matchNvd(cves: NvdCve[], watch: WatchItem[], cvssMin: number, no
   const out: Alert[] = [];
   for (const c of cves) {
     if (c.cvss === null || c.cvss < cvssMin) continue;
-    const w = watch.find((w) => cveMatchesWatch(c, w));
+    const w = watch.find((w) => w.nvd && cveMatchesWatch(c, w));
     if (!w) continue;
     out.push({
       level: "red",

@@ -16,7 +16,7 @@ describe("config", () => {
   });
 
   it("rejects an empty watchlist", () => {
-    expect(() => parseConfig(example.replace(/  watchlist:\n(    - .*\n)+/, "  watchlist: []\n"))).toThrow(/watchlist/);
+    expect(() => parseConfig(example.replace(/  watchlist:.*\n(    - .*\n)+/, "  watchlist: []\n"))).toThrow(/watchlist/);
   });
 
   it("rejects a malformed CPE and a bad recipient", () => {

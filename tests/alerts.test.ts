@@ -10,8 +10,8 @@ import { renderAlerts } from "../src/alerts/render.js";
 
 const now = new Date("2026-10-21T12:00:00Z");
 const watch: WatchItem[] = [
-  { name: "PHP", match: ["php"], cpe: ["php:php"] },
-  { name: "nginx", match: ["nginx"], cpe: [] },
+  { name: "PHP", match: ["php"], cpe: ["php:php"], nvd: true },
+  { name: "nginx", match: ["nginx"], cpe: [], nvd: true },
 ];
 const rules = { severityKeywords: ["critical", "RCE", "actively exploited"], minSources: 2, hours: 24 };
 
@@ -53,6 +53,18 @@ describe("red alerts", () => {
 
   it("with a CPE set, a description mention alone is not enough", () => {
     expect(matchNvd([cve({ cpes: ["wordpress:plugin"], description: "PHP object injection in a plugin" })], watch, 9, now)).toHaveLength(0);
+  });
+
+  it("a vendor wildcard CPE matches any product of that vendor", () => {
+    const w: WatchItem[] = [{ name: "Fortinet", match: ["fortinet"], cpe: ["fortinet:*"], nvd: true }];
+    expect(matchNvd([cve({ cpes: ["fortinet:fortios"] })], w, 9, now)).toHaveLength(1);
+    expect(matchNvd([cve({ cpes: ["fortinetx:other"] })], w, 9, now)).toHaveLength(0);
+  });
+
+  it("with nvd: false, critical NVD scores don't alert but KEV still does", () => {
+    const w: WatchItem[] = [{ name: "Microsoft", match: ["microsoft"], cpe: [], nvd: false }];
+    expect(matchNvd([cve({ cpes: ["microsoft:windows"], description: "Microsoft Windows flaw" })], w, 9, now)).toHaveLength(0);
+    expect(matchKev([kev({ vendorProject: "Microsoft", product: "Windows" })], w, now, 3)).toHaveLength(1);
   });
 
   it("below the CVSS threshold does not alert", () => {
@@ -148,5 +160,21 @@ describe("alert email", () => {
   it("labels early signals as unconfirmed in the subject", () => {
     const [a] = matchNews([item({ tier: 1 })], watch, rules, now);
     expect(renderAlerts([a!]).subject).toMatch(/^🟠 \[Radar\] Early signal/);
+  });
+});
+
+describe("NVD parsing", () => {
+  it("ignores platform CPEs that aren't vulnerable", async () => {
+    const { toCve } = await import("../src/collect/nvd.js");
+    const c = toCve({
+      id: "CVE-2026-0003",
+      published: "2026-10-21T10:00:00.000",
+      configurations: [{ nodes: [{ cpeMatch: [
+        { criteria: "cpe:2.3:a:acme:extension:1.0:*:*:*:*:*:*:*", vulnerable: true },
+        { criteria: "cpe:2.3:a:google:chrome:-:*:*:*:*:*:*:*", vulnerable: false },
+      ] }] }],
+    });
+    expect(c.cpes).toEqual(["acme:extension"]);
+    expect(c.published).toBe("2026-10-21T10:00:00.000Z");
   });
 });

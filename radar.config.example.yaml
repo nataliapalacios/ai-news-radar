@@ -1,5 +1,5 @@
-# Example config with generic values. Copy to radar.config.yaml for your own
-# deployment; that file lists what you run, so keep the repo private.
+# Example config with generic values. Copy it to radar.config.yaml in your own
+# private copy and set your recipients; adjust the watchlist to what you run.
 
 recipients: [you@example.com]
 timezone: Europe/Madrid
@@ -7,11 +7,21 @@ email_language: en
 
 alerts:
   every_hours: 2
-  watchlist:
-    - { name: PHP,       match: [php],                  cpe: ["php:php"],             vendor_feed: "https://www.php.net/feed.atom" }
-    - { name: WordPress, match: [wordpress],            cpe: ["wordpress:wordpress"] }
-    - { name: OpenSSL,   match: [openssl],              cpe: ["openssl:openssl"] }
-    - { name: nginx,     match: [nginx],                cpe: ["f5:nginx", "nginx:nginx"] }
+  watchlist:   # platforms almost everyone runs. nvd: false = only CISA KEV + news early signals (too many CVEs otherwise)
+    - { name: Microsoft,     match: [microsoft, windows, exchange server, sharepoint], nvd: false }
+    - { name: Apple,         match: [apple, iphone, macos], nvd: false }
+    - { name: Android,       match: [android], nvd: false }
+    - { name: Google Chrome, match: [chrome, chromium], nvd: false }   # auto-updates; ~90 CVEs at 9.6 per month
+    - { name: Linux kernel,  match: [linux kernel], cpe: ["linux:linux_kernel"] }
+    - { name: Cisco,         match: [cisco], cpe: ["cisco:*"] }
+    - { name: Fortinet,      match: [fortinet, fortigate], cpe: ["fortinet:*"] }
+    - { name: Ivanti,        match: [ivanti], cpe: ["ivanti:*"] }
+    - { name: VMware,        match: [vmware, esxi], cpe: ["vmware:*"] }
+    - { name: Citrix,        match: [citrix, netscaler], cpe: ["citrix:*"] }
+    - { name: Palo Alto,     match: [palo alto networks, pan-os], cpe: ["paloaltonetworks:*"] }
+    - { name: OpenSSL,       match: [openssl], cpe: ["openssl:openssl"] }
+    - { name: PHP,           match: [php], cpe: ["php:php"], vendor_feed: "https://www.php.net/feed.atom" }
+    - { name: WordPress,     match: [wordpress], cpe: ["wordpress:wordpress"] }
   cvss_min: 9.0
   severity_keywords: [RCE, remote code execution, zero-day, 0-day, actively exploited, exploited in the wild, critical, wormable]
   early_signal_min_sources: 2

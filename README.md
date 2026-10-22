@@ -149,11 +149,21 @@ email_language: en
 
 alerts:
   every_hours: 2
-  watchlist:                     # products you run; matched against KEV, NVD CPEs and headlines
-    - { name: PHP,       match: [php],                    vendor_feed: "https://www.php.net/feed.atom" }
-    - { name: WordPress, match: [wordpress, wp plugin] }
-    - { name: OpenSSL,   match: [openssl] }
-    - { name: nginx,     match: [nginx] }
+  watchlist:   # platforms almost everyone runs. nvd: false = only CISA KEV + news early signals (too many CVEs otherwise)
+    - { name: Microsoft,     match: [microsoft, windows, exchange server, sharepoint], nvd: false }
+    - { name: Apple,         match: [apple, iphone, macos], nvd: false }
+    - { name: Android,       match: [android], nvd: false }
+    - { name: Google Chrome, match: [chrome, chromium], nvd: false }   # auto-updates; ~90 CVEs at 9.6 per month
+    - { name: Linux kernel,  match: [linux kernel], cpe: ["linux:linux_kernel"] }
+    - { name: Cisco,         match: [cisco], cpe: ["cisco:*"] }
+    - { name: Fortinet,      match: [fortinet, fortigate], cpe: ["fortinet:*"] }
+    - { name: Ivanti,        match: [ivanti], cpe: ["ivanti:*"] }
+    - { name: VMware,        match: [vmware, esxi], cpe: ["vmware:*"] }
+    - { name: Citrix,        match: [citrix, netscaler], cpe: ["citrix:*"] }
+    - { name: Palo Alto,     match: [palo alto networks, pan-os], cpe: ["paloaltonetworks:*"] }
+    - { name: OpenSSL,       match: [openssl], cpe: ["openssl:openssl"] }
+    - { name: PHP,           match: [php], cpe: ["php:php"], vendor_feed: "https://www.php.net/feed.atom" }
+    - { name: WordPress,     match: [wordpress], cpe: ["wordpress:wordpress"] }
   cvss_min: 9.0
   severity_keywords: [RCE, remote code execution, zero-day, 0-day, actively exploited, critical, wormable]
   early_signal_min_sources: 2
@@ -357,7 +367,12 @@ In your copy, open `radar.config.example.yaml`, copy its content, then **Add fil
 
 - `recipients`: where the emails go (any address, not only Gmail).
 - `timezone`: e.g. `America/Mexico_City`, `Europe/Madrid`.
-- `alerts.watchlist`: the software **you** run. For each one, `match` holds the names to look for in news. `cpe` is optional: it makes NVD matching exact. Find it by searching the product in [NVD's CPE search](https://nvd.nist.gov/products/cpe/search); the `vendor:product` part of `cpe:2.3:a:vendor:product:...` is what goes here. Leave `cpe: []` if you're not sure.
+- `alerts.watchlist`: what triggers an **urgent alert**. It doesn't filter the daily or monthly emails, which always cover all AI and security news. The default list covers platforms almost everyone runs (Microsoft, Apple, Android, Chrome, Linux, Cisco, Fortinet, Ivanti, VMware, Citrix, Palo Alto, OpenSSL, PHP, WordPress); add or remove to fit you. For each one:
+  - `match`: the names to look for in KEV and in headlines.
+  - `cpe` (optional): makes NVD matching exact. `vendor:product`, or `vendor:*` for every product of a vendor. Find it with [NVD's CPE search](https://nvd.nist.gov/products/cpe/search): the `vendor:product` part of `cpe:2.3:a:vendor:product:...`.
+  - `nvd: false`: for vendors with hundreds of CVEs a month (Microsoft, Apple, Android, Chrome), only "actively exploited" (CISA KEV) and news early signals alert, not every critical score.
+
+  On the last 60 days, the default list alerted on 21 of 60 days, mostly VMware, Citrix, Cisco and Ivanti. Run `npm run replay` after editing it to see how noisy your list would be.
 - `sources`: keep the defaults, or add any HTTPS RSS feed.
 
 Commit the file. Emails are never sent to `example.com` addresses, so nothing goes out until you set yours.
@@ -435,7 +450,8 @@ Project rules for Claude Code live in [`CLAUDE.md`](CLAUDE.md).
 
 **Notes from the build**
 - All 11 sources and the PHP vendor feed answered on 2026-10-22.
-- NVD is queried per watchlist CPE (`virtualMatchString`) by *last-modified* date, because NVD often adds the CVSS score days after publishing a CVE.
+- NVD is queried per watchlist CPE (`virtualMatchString`) by *last-modified* date, because NVD often adds the CVSS score days after publishing a CVE. Pages are kept at 500 results with retries, because NVD times out on large ones.
+- Only CPEs marked `vulnerable` count. NVD also lists the platform an app runs on ("runs on Linux / Chrome"); counting those inflated the first broad replay from ~60 to 278 alerts.
 - The Hacker News blocks automated article reads (HTTP 403). Its headlines still count for alerts and "also covered by", but its stories can't make the top 3 because their quotes can't be verified. The tool doesn't work around bot protection.
 - CVE references hosted on GitHub/GitLab are dropped unless they are advisory pages, because they are mostly PoCs.
 
