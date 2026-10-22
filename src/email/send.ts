@@ -43,10 +43,11 @@ export async function sendEmail(to: string[], email: Email): Promise<string> {
     const info = await transport.sendMail({ from: `AI News Radar <${SMTP_USER}>`, to, subject, text: email.text, html: email.html });
     return `sent: ${info.messageId}`;
   } catch (e) {
-    if ((e as { code?: string }).code === "EAUTH")
+    const err = e as { code?: string; response?: string };
+    if (err.code === "EAUTH")
       throw new Error(
         "Gmail rejected the login (EAUTH). SMTP_PASS must be a Gmail App Password (16 letters, no spaces) " +
-        "created on the same account as SMTP_USER, not the account password.",
+        `created on the same account as SMTP_USER, not the account password. Gmail said: ${err.response ?? "n/a"}`,
       );
     throw e;
   }
