@@ -19,6 +19,12 @@ export async function sendEmail(to: string[], email: Email): Promise<string> {
   // The example config's placeholder address never receives real mail.
   const placeholder = to.some((r) => /@example\.(com|org|net)$/i.test(r));
   if (placeholder) console.warn("recipients still point at example.com: set them in radar.config.yaml");
+  // On GitHub Actions a missing secret must fail the run: silence would look like "no news".
+  if (process.env.GITHUB_ACTIONS === "true" && DRY_RUN !== "1") {
+    const missing = [!SMTP_USER && "SMTP_USER", !SMTP_PASS && "SMTP_PASS"].filter(Boolean);
+    if (missing.length) throw new Error(`Missing repository secret(s): ${missing.join(", ")} (Settings → Secrets and variables → Actions)`);
+    if (placeholder) throw new Error("recipients in radar.config.yaml still point at example.com");
+  }
   if (DRY_RUN === "1" || !SMTP_USER || !SMTP_PASS || placeholder) {
     const dir = join("out", "emails");
     mkdirSync(dir, { recursive: true });
