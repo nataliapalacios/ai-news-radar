@@ -395,7 +395,9 @@ From then on it runs by itself: alerts every 2 h, the daily at 05:00 UTC, the mo
 |---|---|
 | A job shows ⏭ skipped | `RADAR_ENABLED` isn't set to `true` (step 6) |
 | Log says `recipients still point at example.com` | Set `recipients` in `radar.config.yaml` (step 5) |
-| `Invalid login` / `535` from SMTP | Use the App Password, not your Gmail password; check `SMTP_USER` matches the account that created it |
+| `Missing repository secret(s): …` | A secret is missing or misnamed; names must be exactly `SMTP_USER`, `SMTP_PASS` |
+| `Gmail rejected the login (EAUTH)` / `535-5.7.8` | Use the App Password, not your Gmail password, with no spaces; `SMTP_USER` must be the exact address of the account that created it. When in doubt, delete it, create a new one and update both secrets |
+| App passwords page says "not available for your account" | Turn on 2-Step Verification for that Google account first |
 | `401` or `authentication_error` from Claude | Recreate the API key and update the secret |
 | `credit balance is too low` | Add credit in the Claude Console |
 | Email "⚠️ Radar … job is down" | A job failed twice in a row; open the Actions tab to see why |
