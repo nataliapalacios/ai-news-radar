@@ -33,8 +33,17 @@ export async function sendEmail(to: string[], email: Email): Promise<string> {
     secure: true,
     auth: { user: SMTP_USER, pass: SMTP_PASS },
   });
-  const info = await transport.sendMail({ from: `AI News Radar <${SMTP_USER}>`, to, subject, text: email.text, html: email.html });
-  return `sent: ${info.messageId}`;
+  try {
+    const info = await transport.sendMail({ from: `AI News Radar <${SMTP_USER}>`, to, subject, text: email.text, html: email.html });
+    return `sent: ${info.messageId}`;
+  } catch (e) {
+    if ((e as { code?: string }).code === "EAUTH")
+      throw new Error(
+        "Gmail rejected the login (EAUTH). SMTP_PASS must be a Gmail App Password (16 letters, no spaces) " +
+        "created on the same account as SMTP_USER, not the account password.",
+      );
+    throw e;
+  }
 }
 
 function slug(s: string): string {

@@ -112,3 +112,23 @@ describe("dedupe (V5)", () => {
     expect(titleSimilarity("Ransomware hits hospital chain", "New AI model released")).toBe(0);
   });
 });
+
+describe("dedupe by story name (V5)", () => {
+  const item = (o: Partial<FeedItem>): FeedItem => ({
+    url: "https://a.example/1", title: "t", excerpt: "", published: "2026-10-21T09:00:00Z", source: "A", tier: 2, topic: "security", ...o,
+  });
+
+  it("merges two outlets that name the same flaw differently", () => {
+    const out = cluster([
+      item({ title: "Someone Tried to Exploit PHP2Shell 4 Days Before the Vulnerabilities Were Publicly Disclosed", source: "Outlet A" }),
+      item({ url: "https://b.example/2", title: "PHP2Shell Exploitation Started Days Before Patches", source: "Outlet B" }),
+    ]);
+    expect(out).toHaveLength(1);
+  });
+
+  it("finds coined names but not plain words or years", async () => {
+    const { storyNames } = await import("../src/verify/dedupe.js");
+    expect(storyNames("Arista patches VeloCloud zero-day in 2026")).toEqual(["velocloud"]);
+    expect(storyNames("Log4Shell returns")).toEqual(["log4shell"]);
+  });
+});

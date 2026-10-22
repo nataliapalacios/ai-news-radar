@@ -116,8 +116,12 @@ export async function buildDaily(
     .filter((c) => scores.has(c.id))
     .map((c) => ({ ...c, scores: scores.get(c.id)!, total: sum(scores.get(c.id)!) }));
 
-  // Summarize a few more than we need; the lock will drop some.
-  const { picked: toSummarize } = pickWithMix(ranked, cfg.daily.summarize_n, cfg.daily.min_per_topic);
+  // Summarize a few more than we need, with a backup per required topic: the lock will drop some.
+  const { ai, security } = cfg.daily.min_per_topic;
+  const { picked: toSummarize } = pickWithMix(ranked, cfg.daily.summarize_n, {
+    ai: ai ? ai + 1 : 0,
+    security: security ? security + 1 : 0,
+  });
   const summarized: DailyItem[] = [];
   for (const c of toSummarize) {
     const cl = byId.get(c.id)!;

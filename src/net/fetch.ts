@@ -95,8 +95,9 @@ async function readCapped(res: Response, maxBytes: number): Promise<string> {
     if (done) break;
     total += value.byteLength;
     if (total > maxBytes) {
+      // A cut-off body would parse as broken XML/JSON; fail clearly instead.
       await reader.cancel();
-      break;
+      throw new Error(`response larger than ${maxBytes} bytes`);
     }
     chunks.push(value);
   }

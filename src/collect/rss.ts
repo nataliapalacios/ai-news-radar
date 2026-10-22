@@ -19,7 +19,8 @@ export async function fetchFeed(
   src: Pick<Source, "name" | "url" | "tier" | "topic">,
   allow: string[],
 ): Promise<FeedItem[]> {
-  const res = await safeFetch(src.url, { allow });
+  // Some feeds (CISA advisories) carry full articles and run to several MB.
+  const res = await safeFetch(src.url, { allow, maxBytes: 25_000_000, timeoutMs: 30_000 });
   if (res.status !== 200) throw new Error(`${src.name}: HTTP ${res.status}`);
   return parseFeed(res.body, src);
 }
