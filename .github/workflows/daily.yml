@@ -1,0 +1,46 @@
+name: daily
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# One group for all jobs: they share data/ and must not push over each other.
+concurrency:
+  group: radar-state
+  cancel-in-progress: false
+
+jobs:
+  run:
+    # Off until the owner of a copy sets the repo variable RADAR_ENABLED=true (README step 6).
+    if: vars.RADAR_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SMTP_USER: ${{ secrets.SMTP_USER }}
+      SMTP_PASS: ${{ secrets.SMTP_PASS }}
+      NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run daily
+      - name: Report failure
+        if: failure()
+        run: npm run notify-failure -- daily
+      - name: Commit state
+        if: always()
+        run: |
+          git config user.name "radar-bot"
+          git config user.email "radar-bot@users.noreply.github.com"
+          git add data
+          git diff --cached --quiet && exit 0
+          git commit -m "data: daily $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase
+          git push

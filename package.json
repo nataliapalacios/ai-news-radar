@@ -1,0 +1,38 @@
+{
+  "name": "ai-news-radar",
+  "version": "0.1.0",
+  "description": "Private radar for AI and cybersecurity news: urgent alerts, daily top 3, monthly trends.",
+  "scripts": {
+    "alerts": "tsx src/alerts/run.ts",
+    "daily": "tsx src/daily/run.ts",
+    "monthly": "tsx src/monthly/run.ts",
+    "replay": "tsx src/alerts/replay.ts",
+    "check-sources": "tsx src/config/check-sources.ts",
+    "notify-failure": "tsx src/state/health.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.1.0",
+    "@mozilla/readability": "0.6.0",
+    "jsdom": "30.1.3",
+    "nodemailer": "10.2.1",
+    "rss-parser": "3.13.0",
+    "yaml": "2.9.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/jsdom": "30.0.0",
+    "@types/node": "26.6.5",
+    "@types/nodemailer": "8.0.2",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=22.22"
+  }
+}

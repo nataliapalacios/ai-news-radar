@@ -1,0 +1,57 @@
+# Example config with generic values. Copy to radar.config.yaml for your own
+# deployment; that file lists what you run, so keep the repo private.
+
+recipients: [you@example.com]
+timezone: Europe/Madrid
+email_language: en
+
+alerts:
+  every_hours: 2
+  watchlist:
+    - { name: PHP,       match: [php],                  cpe: ["php:php"],             vendor_feed: "https://www.php.net/feed.atom" }
+    - { name: WordPress, match: [wordpress],            cpe: ["wordpress:wordpress"] }
+    - { name: OpenSSL,   match: [openssl],              cpe: ["openssl:openssl"] }
+    - { name: nginx,     match: [nginx],                cpe: ["f5:nginx", "nginx:nginx"] }
+  cvss_min: 9.0
+  severity_keywords: [RCE, remote code execution, zero-day, 0-day, actively exploited, exploited in the wild, critical, wormable]
+  early_signal_min_sources: 2
+  kev_lookback_days: 3
+  nvd_lookback_hours: 6
+  quiet_hours: null
+
+daily:
+  send_at: "07:00"
+  top_n: 3
+  window_hours: 24
+  window_hours_if_thin: 36
+  thin_threshold: 10
+  summarize_n: 6
+  min_per_topic: { ai: 1, security: 1 }
+  runners_up: 5
+
+topics:
+  ai:
+    keywords: [LLM, language model, foundation model, AI agent, agentic, AI regulation, AI Act, open-weights, AI safety, generative AI]
+  security:
+    keywords: [vulnerability, CVE, ransomware, breach, zero-day, patch, supply chain, malware, exploit]
+
+sources:
+  # tier 1: primary / authoritative
+  - { name: CISA KEV,           type: kev, url: "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json", tier: 1, topic: security }
+  - { name: NVD,                type: nvd, url: "https://services.nvd.nist.gov/rest/json/cves/2.0", tier: 1, topic: security }
+  - { name: CISA Advisories,    type: rss, url: "https://www.cisa.gov/cybersecurity-advisories/all.xml", tier: 1, topic: security }
+  - { name: Hugging Face Blog,  type: rss, url: "https://huggingface.co/blog/feed.xml", tier: 1, topic: ai }
+  - { name: Google DeepMind,    type: rss, url: "https://deepmind.google/blog/rss.xml", tier: 1, topic: ai }
+  - { name: OpenAI News,        type: rss, url: "https://openai.com/news/rss.xml", tier: 1, topic: ai }
+  # tier 2: specialist press
+  - { name: BleepingComputer,   type: rss, url: "https://www.bleepingcomputer.com/feed/", tier: 2, topic: security }
+  - { name: The Hacker News,    type: rss, url: "https://feeds.feedburner.com/TheHackersNews", site: thehackernews.com, tier: 2, topic: security }
+  - { name: SecurityWeek,       type: rss, url: "https://www.securityweek.com/feed/", tier: 2, topic: security }
+  - { name: Krebs on Security,  type: rss, url: "https://krebsonsecurity.com/feed/", tier: 2, topic: security }
+  - { name: MIT Tech Review AI, type: rss, url: "https://www.technologyreview.com/topic/artificial-intelligence/feed", tier: 2, topic: ai }
+
+blocked_domains: []
+
+models:
+  daily: claude-haiku-5-5
+  monthly: claude-sonnet-5-5
