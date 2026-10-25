@@ -22,6 +22,8 @@ export const Source = z.object({
   site: z.string().optional(),
   tier: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   topic: z.enum(["ai", "security"]),
+  /** For general feeds (a business school, a vendor blog): keep only items that match the topic keywords. */
+  require_keywords: z.boolean().default(false),
 });
 export type Source = z.infer<typeof Source>;
 
@@ -48,6 +50,8 @@ export const Config = z.object({
     summarize_n: z.number().int().min(1).max(12).default(6),
     min_per_topic: z.object({ ai: z.number().int().min(0), security: z.number().int().min(0) }),
     runners_up: z.number().int().min(0).max(10).default(5),
+    /** "AI in brief" section: this many more AI stories, two lines each. 0 turns it off. */
+    ai_briefs: z.number().int().min(0).max(10).default(5),
   }),
   topics: z.object({
     ai: z.object({ keywords: z.array(z.string()) }),

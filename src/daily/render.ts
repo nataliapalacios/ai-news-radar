@@ -1,6 +1,6 @@
 import { esc, link, page } from "../email/html.js";
 import type { Email } from "../email/send.js";
-import type { DailyItem, DailyRun } from "./pipeline.js";
+import type { Brief, DailyItem, DailyRun } from "./pipeline.js";
 
 const ACTION: Record<string, string> = {
   patch: "Patch: a fix is available",
@@ -35,6 +35,13 @@ export function renderDaily(run: DailyRun, tz: string): Email {
     text.push(line, "");
     html.push(`<p style="color:#6b7280">${esc(line)}</p>`);
   }
+  if (run.ai_briefs?.length) {
+    text.push("AI in brief:", "", ...run.ai_briefs.flatMap((b) => [...briefText(b), ""]));
+    html.push(
+      `<h3 style="margin:24px 0 10px;font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:#1d4ed8">AI in brief</h3>` +
+      run.ai_briefs.map(briefHtml).join(""),
+    );
+  }
   if (run.runners_up.length) {
     text.push("Also on the radar:", ...run.runners_up.map((r) => `- ${r.title} (${r.source})\n  ${r.url}`), "");
     html.push(
@@ -46,6 +53,22 @@ export function renderDaily(run: DailyRun, tz: string): Email {
   html.push(`<p style="margin:24px 0 0;font-size:12px;color:#6b7280">${esc(footer)}<br>AI News Radar · summaries link to the original; every quote was checked against the article.</p>`);
 
   return { subject: `[Radar] ${day} · ${lead}${more}`, text: text.join("\n"), html: page(`Radar ${day}`, html.join("\n")) };
+}
+
+function briefText(b: Brief): string[] {
+  return [
+    `· ${b.title} (${b.source})`,
+    `  ${b.why_it_matters}`,
+    `  ${b.fact}`,
+    `  ${b.url}`,
+  ];
+}
+
+function briefHtml(b: Brief): string {
+  return `<div style="margin:0 0 14px">
+<div style="font-weight:600;line-height:1.35">${link(b.title, b.url)} <span style="font-weight:400;font-size:13px;color:#6b7280">· ${esc(b.source)}</span></div>
+<div style="font-size:14px;color:#374151">${esc(b.why_it_matters)} ${esc(b.fact)}</div>
+</div>`;
 }
 
 function itemText(it: DailyItem, n: number, tz: string): string[] {

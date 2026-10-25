@@ -11,12 +11,14 @@ export interface FeedItem {
   source: string;
   tier: 1 | 2 | 3;
   topic: "ai" | "security";
+  /** Only counts if it matches the topic keywords (general-interest feeds). */
+  requireKeywords?: boolean;
 }
 
 const parser = new Parser();
 
 export async function fetchFeed(
-  src: Pick<Source, "name" | "url" | "tier" | "topic">,
+  src: Pick<Source, "name" | "url" | "tier" | "topic"> & { require_keywords?: boolean },
   allow: string[],
 ): Promise<FeedItem[]> {
   // Some feeds (CISA advisories) carry full articles and run to several MB.
@@ -27,7 +29,7 @@ export async function fetchFeed(
 
 export async function parseFeed(
   xml: string,
-  src: Pick<Source, "name" | "tier" | "topic">,
+  src: Pick<Source, "name" | "tier" | "topic"> & { require_keywords?: boolean },
 ): Promise<FeedItem[]> {
   const feed = await parser.parseString(xml);
   return feed.items.flatMap((it) => {
@@ -42,6 +44,7 @@ export async function parseFeed(
       source: src.name,
       tier: src.tier,
       topic: src.topic,
+      ...(src.require_keywords ? { requireKeywords: true } : {}),
     }];
   });
 }

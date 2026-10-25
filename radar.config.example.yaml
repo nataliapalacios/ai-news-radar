@@ -38,10 +38,11 @@ daily:
   summarize_n: 6
   min_per_topic: { ai: 1, security: 1 }
   runners_up: 5
+  ai_briefs: 5                 # "AI in brief": 5 more AI stories, 2 lines each (0 = off)
 
 topics:
   ai:
-    keywords: [LLM, language model, foundation model, AI agent, agentic, AI regulation, AI Act, open-weights, AI safety, generative AI]
+    keywords: [AI, artificial intelligence, machine learning, deep learning, LLM, language model, foundation model, generative AI, GenAI, GPT, Gemini, Claude, Llama, chatbot, AI agent, agentic, AI model, open-weights, AI regulation, AI Act, AI safety, AI governance]
   security:
     keywords: [vulnerability, CVE, ransomware, breach, zero-day, patch, supply chain, malware, exploit]
 
@@ -59,6 +60,20 @@ sources:
   - { name: SecurityWeek,       type: rss, url: "https://www.securityweek.com/feed/", tier: 2, topic: security }
   - { name: Krebs on Security,  type: rss, url: "https://krebsonsecurity.com/feed/", tier: 2, topic: security }
   - { name: MIT Tech Review AI, type: rss, url: "https://www.technologyreview.com/topic/artificial-intelligence/feed", tier: 2, topic: ai }
+  # AI: research and business schools
+  - { name: MIT News AI,              type: rss, url: "https://news.mit.edu/rss/topic/artificial-intelligence2", tier: 1, topic: ai }
+  - { name: MIT Sloan Management Review, type: rss, url: "https://sloanreview.mit.edu/tag/artificial-intelligence/feed/", tier: 2, topic: ai }
+  - { name: HBS Working Knowledge,    type: rss, url: "https://hbswk.hbs.edu/rss/rss.xml", site: hbs.edu, tier: 2, topic: ai, require_keywords: true }
+  - { name: Harvard Gazette,          type: rss, url: "https://news.harvard.edu/gazette/section/science-technology/feed/", tier: 2, topic: ai, require_keywords: true }
+  - { name: IEEE Spectrum AI,         type: rss, url: "https://spectrum.ieee.org/feeds/topic/artificial-intelligence.rss", tier: 2, topic: ai }
+  # AI: tech press (most daily volume)
+  - { name: The Verge AI,             type: rss, url: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml", tier: 2, topic: ai }
+  - { name: TechCrunch AI,            type: rss, url: "https://techcrunch.com/category/artificial-intelligence/feed/", tier: 2, topic: ai }
+  - { name: Ars Technica AI,          type: rss, url: "https://arstechnica.com/ai/feed/", tier: 2, topic: ai }
+  - { name: Wired AI,                 type: rss, url: "https://www.wired.com/feed/tag/ai/latest/rss", tier: 2, topic: ai }
+  # AI: vendor blogs (only AI posts)
+  - { name: Google AI blog,           type: rss, url: "https://blog.google/technology/ai/rss/", tier: 1, topic: ai }
+  - { name: NVIDIA blog,              type: rss, url: "https://blogs.nvidia.com/feed/", tier: 1, topic: ai, require_keywords: true }
 
 blocked_domains: []
 

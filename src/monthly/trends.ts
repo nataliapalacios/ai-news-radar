@@ -35,10 +35,11 @@ export function monthStats(month: string, dailies: DailyRun[], alerts: Alert[], 
   };
 }
 
-/** Top stories plus runners-up: the archive the model may cite. */
+/** Top stories, AI briefs and runners-up: the archive the model may cite. */
 export function archiveItems(dailies: DailyRun[]): ArchiveItem[] {
   return dailies.flatMap((d) => [
     ...d.top.map((t) => ({ id: t.id, date: d.date, title: t.title, source: t.source, topic: t.topic, why_it_matters: t.why_it_matters })),
+    ...(d.ai_briefs ?? []).map((b) => ({ id: b.id, date: d.date, title: b.title, source: b.source, topic: "ai", why_it_matters: b.why_it_matters })),
     ...d.runners_up.map((r) => ({ id: r.id, date: d.date, title: r.title, source: r.source, topic: r.topic, why_it_matters: "" })),
   ]);
 }

@@ -7,7 +7,7 @@ Most newsletters either flood you or reach you a day late. AI News Radar reads a
 | Email | When | What |
 |---|---|---|
 | 🔴 **Alert** | Within ~2 h of the signal | A vulnerability that hits your watchlist (e.g. PHP, WordPress, OpenSSL) is actively exploited, critical, or being reported by several trusted sources |
-| ☀️ **Daily top 3** | Every morning | The 3 stories worth your time from the last 24 h: at least one AI, at least one security |
+| ☀️ **Daily top 3 + AI in brief** | Every morning | The 3 stories worth your time from the last 24 h (at least one AI, at least one security), then 5 more AI stories in two lines each |
 | 📈 **Monthly trends** | The 1st of each month | 3–5 trends from the month, each backed by the stories that prove it |
 
 It is unbranded and built for one person or a small team that wants to stay current without reading 40 feeds. It runs on GitHub Actions and costs **under US$0.50 a month** (see [Costs](#costs)).
@@ -99,7 +99,9 @@ Runs every 2 hours. It's pure code, so it's free, deterministic and fast.
 3. **Filter and verify**: allowlist, live URL, real date, dedupe. The same story from 5 outlets becomes 1 item listed as "also covered by".
 4. **Cheap pass:** Haiku scores all candidates from title + excerpt only (one call).
 5. **Summarize** the top 6 with full text. Each claim comes with a verbatim quote, and the code checks the quote is in the article.
-6. **Select** the top 3 with the mix rules, then send the email and save `data/daily/YYYY-MM-DD.json`.
+6. **Select** the top 3 with the mix rules.
+7. **AI in brief:** the next 5 AI stories by score, each as *why it matters* + one verified fact + link. If a page blocks automated reading, the brief can be written from the publisher's own feed summary, and its quote is checked against that text instead; those never reach the top 3.
+8. Send the email and save `data/daily/YYYY-MM-DD.json`.
 
 #### Scoring rubric (0–20 each, configurable)
 
@@ -144,7 +146,7 @@ One file, `radar.config.yaml`. The example below has generic values. Your real w
 
 ```yaml
 recipients: [you@example.com]
-timezone: Europe/Madrid          # GitHub cron runs in UTC; the job converts
+timezone: Europe/Madrid
 email_language: en
 
 alerts:
@@ -165,40 +167,59 @@ alerts:
     - { name: PHP,           match: [php], cpe: ["php:php"], vendor_feed: "https://www.php.net/feed.atom" }
     - { name: WordPress,     match: [wordpress], cpe: ["wordpress:wordpress"] }
   cvss_min: 9.0
-  severity_keywords: [RCE, remote code execution, zero-day, 0-day, actively exploited, critical, wormable]
+  severity_keywords: [RCE, remote code execution, zero-day, 0-day, actively exploited, exploited in the wild, critical, wormable]
   early_signal_min_sources: 2
-  quiet_hours: null              # e.g. "23:00-07:00"; 🔴 always sends
+  kev_lookback_days: 3
+  nvd_lookback_hours: 6
+  quiet_hours: null
 
 daily:
   send_at: "07:00"
   top_n: 3
   window_hours: 24
   window_hours_if_thin: 36
+  thin_threshold: 10
+  summarize_n: 6
   min_per_topic: { ai: 1, security: 1 }
-  runners_up: 5                  # one-line "also on the radar"
+  runners_up: 5
+  ai_briefs: 5                 # "AI in brief": 5 more AI stories, 2 lines each (0 = off)
 
 topics:
   ai:
-    keywords: [LLM, foundation model, AI agent, AI regulation, AI Act, open-weights, AI safety]
+    keywords: [AI, artificial intelligence, machine learning, deep learning, LLM, language model, foundation model, generative AI, GenAI, GPT, Gemini, Claude, Llama, chatbot, AI agent, agentic, AI model, open-weights, AI regulation, AI Act, AI safety, AI governance]
   security:
-    keywords: [vulnerability, CVE, ransomware, breach, zero-day, patch, supply chain]
+    keywords: [vulnerability, CVE, ransomware, breach, zero-day, patch, supply chain, malware, exploit]
 
-sources:                         # all URLs to be confirmed in Phase 1
+sources:
   # tier 1: primary / authoritative
-  - { name: CISA KEV,           type: kev,  url: "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json", tier: 1, topic: security }
-  - { name: NVD,                type: nvd,  url: "https://services.nvd.nist.gov/rest/json/cves/2.0", tier: 1, topic: security }
-  - { name: CISA Advisories,    type: rss,  url: "https://www.cisa.gov/cybersecurity-advisories/all.xml", tier: 1, topic: security }
+  - { name: CISA KEV,           type: kev, url: "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json", tier: 1, topic: security }
+  - { name: NVD,                type: nvd, url: "https://services.nvd.nist.gov/rest/json/cves/2.0", tier: 1, topic: security }
+  - { name: CISA Advisories,    type: rss, url: "https://www.cisa.gov/cybersecurity-advisories/all.xml", tier: 1, topic: security }
+  - { name: Hugging Face Blog,  type: rss, url: "https://huggingface.co/blog/feed.xml", tier: 1, topic: ai }
+  - { name: Google DeepMind,    type: rss, url: "https://deepmind.google/blog/rss.xml", tier: 1, topic: ai }
+  - { name: OpenAI News,        type: rss, url: "https://openai.com/news/rss.xml", tier: 1, topic: ai }
   # tier 2: specialist press
-  - { name: BleepingComputer,   type: rss,  url: "https://www.bleepingcomputer.com/feed/", tier: 2, topic: security }
-  - { name: The Hacker News,    type: rss,  url: "https://feeds.feedburner.com/TheHackersNews", tier: 2, topic: security }
-  - { name: SecurityWeek,       type: rss,  url: "https://www.securityweek.com/feed/", tier: 2, topic: security }
-  - { name: Krebs on Security,  type: rss,  url: "https://krebsonsecurity.com/feed/", tier: 2, topic: security }
-  - { name: MIT Tech Review AI, type: rss,  url: "https://www.technologyreview.com/topic/artificial-intelligence/feed", tier: 2, topic: ai }
-  - { name: Hugging Face Blog,  type: rss,  url: "https://huggingface.co/blog/feed.xml", tier: 1, topic: ai }
-  - { name: Google DeepMind,    type: rss,  url: "https://deepmind.google/blog/rss.xml", tier: 1, topic: ai }
-  - { name: OpenAI News,        type: rss,  url: "https://openai.com/news/rss.xml", tier: 1, topic: ai }
+  - { name: BleepingComputer,   type: rss, url: "https://www.bleepingcomputer.com/feed/", tier: 2, topic: security }
+  - { name: The Hacker News,    type: rss, url: "https://feeds.feedburner.com/TheHackersNews", site: thehackernews.com, tier: 2, topic: security }
+  - { name: SecurityWeek,       type: rss, url: "https://www.securityweek.com/feed/", tier: 2, topic: security }
+  - { name: Krebs on Security,  type: rss, url: "https://krebsonsecurity.com/feed/", tier: 2, topic: security }
+  - { name: MIT Tech Review AI, type: rss, url: "https://www.technologyreview.com/topic/artificial-intelligence/feed", tier: 2, topic: ai }
+  # AI: research and business schools
+  - { name: MIT News AI,              type: rss, url: "https://news.mit.edu/rss/topic/artificial-intelligence2", tier: 1, topic: ai }
+  - { name: MIT Sloan Management Review, type: rss, url: "https://sloanreview.mit.edu/tag/artificial-intelligence/feed/", tier: 2, topic: ai }
+  - { name: HBS Working Knowledge,    type: rss, url: "https://hbswk.hbs.edu/rss/rss.xml", site: hbs.edu, tier: 2, topic: ai, require_keywords: true }
+  - { name: Harvard Gazette,          type: rss, url: "https://news.harvard.edu/gazette/section/science-technology/feed/", tier: 2, topic: ai, require_keywords: true }
+  - { name: IEEE Spectrum AI,         type: rss, url: "https://spectrum.ieee.org/feeds/topic/artificial-intelligence.rss", tier: 2, topic: ai }
+  # AI: tech press (most daily volume)
+  - { name: The Verge AI,             type: rss, url: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml", tier: 2, topic: ai }
+  - { name: TechCrunch AI,            type: rss, url: "https://techcrunch.com/category/artificial-intelligence/feed/", tier: 2, topic: ai }
+  - { name: Ars Technica AI,          type: rss, url: "https://arstechnica.com/ai/feed/", tier: 2, topic: ai }
+  - { name: Wired AI,                 type: rss, url: "https://www.wired.com/feed/tag/ai/latest/rss", tier: 2, topic: ai }
+  # AI: vendor blogs (only AI posts)
+  - { name: Google AI blog,           type: rss, url: "https://blog.google/technology/ai/rss/", tier: 1, topic: ai }
+  - { name: NVIDIA blog,              type: rss, url: "https://blogs.nvidia.com/feed/", tier: 1, topic: ai, require_keywords: true }
 
-blocked_domains: []              # aggregators, scraped copies
+blocked_domains: []
 
 models:
   daily: claude-haiku-5-5
@@ -293,6 +314,8 @@ The code decides `quote_verified`, not the model. If Haiku returns `stop_reason:
 2 · AI · <Title> …
 3 · …
 
+AI in brief: 5 AI stories, each with a link and two lines (why it matters + one verified fact)
+
 Also on the radar: 5 one-line headlines with links
 Verified 05:02 UTC · 41 candidates · 6 summarized · 7 dropped (see run log)
 ```
@@ -312,10 +335,10 @@ Each email has an HTML version and a plain-text version.
 | Piece | Volume | Cost / month |
 |---|---|---|
 | GitHub Actions | ~12 alert runs/day + 1 daily + 1 monthly, ~1 min each ≈ 400 min | US$0 (free tier: 2,000 min private / unlimited public) |
-| Daily, Haiku 5.5 (US$0.10 in / US$0.50 out per MTok) | ~25k in + ~5k out per day | ≈ US$0.15 |
+| Daily, Haiku 5.5 (US$0.10 in / US$0.50 out per MTok) | ~45k in + ~9k out per day (measured ~25k + 5k before AI in brief) | ≈ US$0.27 |
 | Monthly, Sonnet 5.5 (US$2 in / US$10 out per MTok) | ~40k in + ~5k out, once | ≈ US$0.13 |
 | Gmail SMTP | < 40 emails | US$0 |
-| **Total** | | **≈ US$0.30 / month** |
+| **Total** | | **≈ US$0.40 / month** |
 
 The token figures are estimates. Each daily run logs its token usage and cost, and the monthly email reports the measured total. Set a US$2/month spend limit on the API key.
 

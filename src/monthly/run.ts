@@ -20,7 +20,13 @@ const dailies = readDailies<DailyRun>(month);
 const alerts = readAlerts<Alert>(month);
 const stats = monthStats(month, dailies, alerts, cfg.sources.filter((s) => s.type === "rss").map((s) => s.name));
 const archive = archiveItems(dailies);
-const urls = new Map(dailies.flatMap((d) => [...d.top.map((t) => [t.id, t.url] as const), ...d.runners_up.map((r) => [r.id, r.url] as const)]));
+const urls = new Map(
+  dailies.flatMap((d) => [
+    ...d.top.map((t) => [t.id, t.url] as const),
+    ...(d.ai_briefs ?? []).map((b) => [b.id, b.url] as const),
+    ...d.runners_up.map((r) => [r.id, r.url] as const),
+  ]),
+);
 
 const out = archive.length >= 4 ? await llm.trends(archive, JSON.stringify(stats)) : null;
 const trends = out ? verifyTrends(out, archive) : [];

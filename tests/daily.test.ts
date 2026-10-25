@@ -116,3 +116,48 @@ describe("monthly lock (V6)", () => {
     expect(kept.map((t) => t.title)).toEqual(["ok"]);
   });
 });
+
+describe("AI in brief", () => {
+  const TITLES = ["", "Robotics benchmark released", "Hospital pilots triage assistant", "Chip export rules tightened", "Open dataset for climate forecasting", "Startup raises funds for coding agents", "Regulator opens consultation on chatbots", "University course on model evaluation"];
+  const ai = (n: number, o: Partial<FeedItem> = {}) =>
+    item({ url: `https://deepmind.google/blog/${n}`, title: TITLES[n]!, source: "Google DeepMind", tier: 1, topic: "ai", excerpt: "AI model update", ...o });
+
+  it("adds up to ai_briefs AI stories beyond the top 3, each with a verified fact", async () => {
+    const feed = [item({}), ...[1, 2, 3, 4, 5, 6, 7].map((n) => ai(n))];
+    const out = await buildDaily(feed, 24, none, deps());
+    expect(out.ai_briefs).toHaveLength(5);
+    const topIds = new Set(out.top.map((t) => t.id));
+    for (const b of out.ai_briefs) {
+      expect(topIds.has(b.id)).toBe(false);
+      expect(html).toContain(b.quote.slice(0, 30));
+      expect(b.basis).toBe("article");
+    }
+    expect(out.runners_up.some((r) => out.ai_briefs.some((b) => b.id === r.id))).toBe(false);
+  });
+
+  it("briefs a blocked page from the publisher's feed summary, verified against that text", async () => {
+    const excerpt = "The company said the new assistant handles scheduling for small teams and will reach all business customers next month across Europe. It costs nothing extra for current subscribers.";
+    const out = await buildDaily([item({}), ai(1, { excerpt })], 24, none, deps({
+      fetchArticle: async (u) => {
+        if (u.includes("deepmind")) throw new Dropped("url_unreachable", "HTTP 403");
+        return article(u);
+      },
+    }));
+    expect(out.ai_briefs).toHaveLength(1);
+    expect(out.ai_briefs[0]?.basis).toBe("feed summary");
+    expect(excerpt).toContain(out.ai_briefs[0]!.quote.replace(/^.*?\. /, "").slice(0, 40));
+  });
+
+  it("never uses the feed fallback for the top 3", async () => {
+    const out = await buildDaily([item({})], 24, none, deps({ fetchArticle: async () => { throw new Dropped("url_unreachable"); } }));
+    expect(out.top).toHaveLength(0);
+  });
+
+  it("keeps only on-topic items from general feeds", async () => {
+    const out = await buildDaily([
+      ai(1, { title: "Dean's letter on campus housing", excerpt: "Housing update", requireKeywords: true }),
+      ai(2, { title: "Business school study on generative AI at work", excerpt: "", requireKeywords: true }),
+    ], 24, none, deps());
+    expect(out.candidates).toBe(1);
+  });
+});
