@@ -4,7 +4,7 @@ import type { FeedItem } from "../collect/rss.js";
 import type { Config } from "../config/schema.js";
 import { type Article, type DropReason, Dropped } from "../extract/article.js";
 import { CRITERIA, type Candidate, type Llm, type Scores } from "../llm/types.js";
-import { type Cluster, cluster } from "../verify/dedupe.js";
+import { type Cluster, cluster, titleSimilarity } from "../verify/dedupe.js";
 import { verifyClaims } from "../verify/quotes.js";
 import { assertApproved } from "../verify/sources.js";
 import { pickWithMix } from "./select.js";
@@ -46,7 +46,8 @@ export interface Brief {
 }
 
 export function toBrief(d: DailyItem): Brief {
-  const [c] = d.claims;
+  // The second line should add something: take the fact that overlaps least with "why it matters".
+  const c = [...d.claims].sort((a, b) => titleSimilarity(a.text, d.why_it_matters) - titleSimilarity(b.text, d.why_it_matters))[0];
   return {
     id: d.id, title: d.title, url: d.url, source: d.source, published: d.published,
     why_it_matters: d.why_it_matters, fact: c!.text, quote: c!.quote,

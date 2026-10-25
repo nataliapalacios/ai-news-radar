@@ -1,7 +1,9 @@
 name: daily
 on:
   schedule:
-    - cron: "0 5 * * *"
+    # GitHub delays scheduled runs at busy times (often by hours), mostly on the hour.
+    # Early and off the hour: 03:23 UTC = 04:23 Madrid in winter, 05:23 in summer.
+    - cron: "23 3 * * *"
   workflow_dispatch:
 
 permissions:

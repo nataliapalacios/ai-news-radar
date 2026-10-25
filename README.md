@@ -252,8 +252,8 @@ ai-news-radar/
 ├─ .github/
 │  ├─ workflows/
 │  │  ├─ alerts.yml      # cron: every 2 h
-│  │  ├─ daily.yml       # cron: 05:00 UTC (07:00 Madrid in summer, 06:00 in winter)
-│  │  ├─ monthly.yml     # cron: 1st of month, 06:00 UTC
+│  │  ├─ daily.yml       # cron: 03:23 UTC (early and off the hour; GitHub may delay it)
+│  │  ├─ monthly.yml     # cron: 1st of month, 04:41 UTC
 │  │  └─ ci.yml          # typecheck, tests, npm audit on every push
 │  └─ dependabot.yml
 ├─ src/
@@ -410,7 +410,7 @@ Still in **Settings → Secrets and variables → Actions**, open the **Variable
 2. Pick **alerts → Run workflow**, then **daily → Run workflow**.
 3. The daily email arrives within a few minutes. Check spam the first time and mark it "Not spam". The alerts job only emails when something on your watchlist is happening, so silence is normal.
 
-From then on it runs by itself: alerts every 2 h, the daily at 05:00 UTC, the monthly on the 1st. To change the daily time, edit the `cron` line in `.github/workflows/daily.yml` (it's in UTC).
+From then on it runs by itself: alerts every 2 h, the daily at 03:23 UTC, the monthly on the 1st. GitHub runs scheduled jobs when it has capacity, so expect delays of minutes to a few hours; the early, off-the-hour time leaves room for that. To change it, edit the `cron` line in `.github/workflows/daily.yml` (it's in UTC; avoid minute 0).
 
 ### Troubleshooting
 

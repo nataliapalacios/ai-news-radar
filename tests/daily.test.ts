@@ -161,3 +161,20 @@ describe("AI in brief", () => {
     expect(out.candidates).toBe(1);
   });
 });
+
+describe("brief lines", () => {
+  it("picks the fact that repeats the first line least", async () => {
+    const { toBrief } = await import("../src/daily/pipeline.js");
+    const b = toBrief({
+      id: "x", url: "https://a.example/1", canonical: "", title: "t", source: "s", tier: 2, published: "2026-10-25T00:00:00Z",
+      topic: "ai", scores: { impact: 0, actionability: 0, novelty: 0, authority: 0, relevance: 0 }, total: 0,
+      why_it_matters: "Google's AI search features made it harder for publishers to survive on Google traffic",
+      claims: [
+        { text: "Google's AI search features made it harder for publishers to survive on traffic", quote: "q1" },
+        { text: "DMG Media saw click-through rates fall by up to 89 percent", quote: "q2" },
+      ],
+      action: "read", cves: [], flags: [], also_covered_by: [], verified_at: "", http_status: 200, text_hash: "",
+    });
+    expect(b.quote).toBe("q2");
+  });
+});
