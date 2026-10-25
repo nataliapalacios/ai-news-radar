@@ -5,7 +5,7 @@ import { allowedDomains, loadConfig } from "../config/load.js";
 import { sendEmail } from "../email/send.js";
 import { markSuccess } from "../state/health.js";
 import { appendAlert, Seen } from "../state/store.js";
-import { inQuietHours, productDayKey, matchKev, matchNews, matchNvd, mergeRed, newAlerts } from "./match.js";
+import { inQuietHours, productDayKey, sendsAtOnce, matchKev, matchNews, matchNvd, mergeRed, newAlerts } from "./match.js";
 import { renderAlerts } from "./render.js";
 
 const NEWS_WINDOW_HOURS = 24;
@@ -54,7 +54,7 @@ const news = [...feeds.items, ...vendor].filter((i) => !seen.has(`news:${i.url}`
 const candidates = [
   ...mergeRed([
     ...matchKev(kev, cfg.alerts.watchlist, now, cfg.alerts.kev_lookback_days),
-    ...matchNvd(nvd, cfg.alerts.watchlist, cfg.alerts.cvss_min, now),
+    ...matchNvd(nvd, cfg.alerts.watchlist, cfg.alerts.cvss_min, now, cfg.alerts.nvd_max_age_days),
   ]),
   ...matchNews(news, cfg.alerts.watchlist, {
     severityKeywords: cfg.alerts.severity_keywords,
@@ -64,21 +64,23 @@ const candidates = [
 ];
 
 const quiet = inQuietHours(cfg.alerts.quiet_hours, cfg.timezone, now);
-const toSend = newAlerts(candidates, seen).filter((a) => a.level === "red" || !quiet);
+const fresh = newAlerts(candidates, seen);
+// Sent now, or held for the daily email (delivery: red_only / daily). Early signals in quiet hours wait for the next run.
+const atOnce = fresh.filter((a) => sendsAtOnce(cfg.alerts.delivery, a.level) && (a.level === "red" || !quiet));
+const held = fresh.filter((a) => !sendsAtOnce(cfg.alerts.delivery, a.level));
+const toSend = [...atOnce, ...held];
 
-if (toSend.length) {
-  console.log(await sendEmail(cfg.recipients, renderAlerts(toSend)));
-  for (const a of toSend) {
-    seen.add(a.key, now);
-    seen.add(productDayKey(a.product, now), now);
-    for (const r of a.reported) seen.add(`news:${r.url}`, now);
-    appendAlert(a, now);
-  }
+if (atOnce.length) console.log(await sendEmail(cfg.recipients, renderAlerts(atOnce)));
+for (const a of toSend) {
+  seen.add(a.key, now);
+  seen.add(productDayKey(a.product, now), now);
+  for (const r of a.reported) seen.add(`news:${r.url}`, now);
+  appendAlert({ ...a, emailed: atOnce.includes(a) }, now);
 }
 seen.save(now);
 
 console.log(
-  `alerts: KEV ${kev.length} · NVD ${nvd.length} · news ${news.length} · candidates ${candidates.length} · sent ${toSend.length}${quiet ? " · quiet hours" : ""}`,
+  `alerts: KEV ${kev.length} · NVD ${nvd.length} · news ${news.length} · candidates ${candidates.length} · emailed ${atOnce.length} · held for daily ${held.length}${quiet ? " · quiet hours" : ""}`,
 );
 for (const e of errors) console.warn(`source error: ${e}`);
 

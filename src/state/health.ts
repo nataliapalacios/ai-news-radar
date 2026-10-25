@@ -11,6 +11,12 @@ type Health = Record<string, { failures: number; lastOk: string | null }>;
 const file = () => join(dataDir(), "health.json");
 const read = (): Health => (existsSync(file()) ? JSON.parse(readFileSync(file(), "utf8")) : {});
 
+/** When a job last finished successfully, or null. */
+export function lastOk(job: string): Date | null {
+  const t = read()[job]?.lastOk;
+  return t ? new Date(t) : null;
+}
+
 export function markSuccess(job: string, now = new Date()): void {
   const h = read();
   h[job] = { failures: 0, lastOk: now.toISOString() };

@@ -7,6 +7,7 @@ email_language: en
 
 alerts:
   every_hours: 2
+  delivery: instant            # instant: email as soon as found · red_only: confirmed at once, early signals in the daily · daily: one email a day, alerts at the top
   watchlist:   # platforms almost everyone runs. nvd: false = only CISA KEV + news early signals (too many CVEs otherwise)
     - { name: Microsoft,     match: [microsoft, windows, exchange server, sharepoint], nvd: false }
     - { name: Apple,         match: [apple, iphone, macos], nvd: false }
@@ -27,6 +28,7 @@ alerts:
   early_signal_min_sources: 2
   kev_lookback_days: 3
   nvd_lookback_hours: 6
+  nvd_max_age_days: 14         # ignore older CVEs that NVD merely re-modified
   quiet_hours: null
 
 daily:

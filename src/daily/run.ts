@@ -4,7 +4,7 @@ import { allowedDomains, loadConfig } from "../config/load.js";
 import { sendEmail } from "../email/send.js";
 import { fetchArticle } from "../extract/article.js";
 import { makeLlm } from "../llm/index.js";
-import { markSuccess } from "../state/health.js";
+import { lastOk, markSuccess } from "../state/health.js";
 import { dailyFile, readAlerts, writeJson } from "../state/store.js";
 import { buildDaily, type DailyRun } from "./pipeline.js";
 import { renderDaily } from "./render.js";
@@ -17,12 +17,15 @@ const date = now.toISOString().slice(0, 10);
 
 // Stories already sent as alerts in the last 24 h don't take a top-3 slot.
 const prevMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString().slice(0, 7);
-const recentAlerts = [...readAlerts<Alert>(prevMonth), ...readAlerts<Alert>(date.slice(0, 7))].filter(
-  (a) => now.getTime() - new Date(a.detectedAt).getTime() <= 24 * 3_600_000,
-);
+const allAlerts = [...readAlerts<Alert>(prevMonth), ...readAlerts<Alert>(date.slice(0, 7))];
+const recentAlerts = allAlerts.filter((a) => now.getTime() - new Date(a.detectedAt).getTime() <= 24 * 3_600_000);
+// Alerts held for this email (delivery: red_only / daily): everything not emailed since the last daily.
+const since = lastOk("daily") ?? new Date(now.getTime() - 24 * 3_600_000);
+const held = allAlerts.filter((a) => a.emailed === false && new Date(a.detectedAt) > since);
+const covered = [...recentAlerts, ...held];
 const exclude = {
-  urls: new Set(recentAlerts.flatMap((a) => a.reported.map((r) => r.url))),
-  cves: new Set(recentAlerts.flatMap((a) => (a.cve ? [a.cve] : []))),
+  urls: new Set(covered.flatMap((a) => a.reported.map((r) => r.url))),
+  cves: new Set(covered.flatMap((a) => (a.cve ? [a.cve] : []))),
 };
 
 const feeds = await fetchAllFeeds(cfg.sources, allow);
@@ -43,7 +46,10 @@ const run: DailyRun = {
   generated_at: now.toISOString(),
   window_hours: windowHours,
   ...built,
-  alerts_24h: recentAlerts.map((a) => ({ level: a.level, product: a.product, cve: a.cve, subject_time: a.detectedAt })),
+  alerts_24h: recentAlerts
+    .filter((a) => a.emailed !== false)
+    .map((a) => ({ level: a.level, product: a.product, cve: a.cve, subject_time: a.detectedAt })),
+  alerts_held: held,
   source_errors: feeds.errors,
   usage: llm.usage,
 };

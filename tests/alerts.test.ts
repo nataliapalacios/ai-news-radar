@@ -178,3 +178,25 @@ describe("NVD parsing", () => {
     expect(c.published).toBe("2026-10-21T10:00:00.000Z");
   });
 });
+
+describe("delivery", () => {
+  it("decides what is emailed at once", async () => {
+    const { sendsAtOnce } = await import("../src/alerts/match.js");
+    expect(sendsAtOnce("instant", "orange")).toBe(true);
+    expect(sendsAtOnce("red_only", "red")).toBe(true);
+    expect(sendsAtOnce("red_only", "orange")).toBe(false);
+    expect(sendsAtOnce("daily", "red")).toBe(false);
+  });
+
+  it("ignores old CVEs that NVD re-modified", () => {
+    expect(matchNvd([cve({ published: "2024-02-09T00:00:00.000Z" })], watch, 9, now, 14)).toHaveLength(0);
+    expect(matchNvd([cve({})], watch, 9, now, 14)).toHaveLength(1);
+  });
+
+  it("renders held alerts compactly for the daily email", async () => {
+    const { alertDigestHtml, alertDigestText } = await import("../src/alerts/render.js");
+    const [a] = matchKev([kev({ vulnerabilityName: "PHP <b>RCE</b>" })], watch, now, 3);
+    expect(alertDigestHtml(a!)).not.toContain("<b>RCE");
+    expect(alertDigestText(a!)[0]).toContain("CONFIRMED · PHP");
+  });
+});

@@ -73,3 +73,24 @@ function section(title: string, body: string): string {
 const FOOTER_TEXT =
   "\n\n--\nAI News Radar · defensive use only: links point to advisories and fixes, never to exploit code.\nCheck your vendor's advisory before acting.";
 const FOOTER_HTML = `<p style="margin:24px 0 0;font-size:12px;color:#6b7280">AI News Radar · defensive use only: links point to advisories and fixes, never to exploit code. Check your vendor's advisory before acting.</p>`;
+
+/** Compact form for the daily email: headline, the key fact, and where to act. */
+export function alertDigestText(a: Alert): string[] {
+  const fact = a.confirmed[0] ?? (a.reported[0] ? `${a.reported[0].source}: ${a.reported[0].title}` : "");
+  return [headline(a), ...(fact ? [`  ${fact}`] : []), ...a.links.slice(0, 2).map((l) => `  ${l.label}: ${l.url}`)];
+}
+
+export function alertDigestHtml(a: Alert): string {
+  const color = a.level === "red" ? "#b91c1c" : "#b45309";
+  const fact = a.confirmed[0]
+    ? esc(a.confirmed[0])
+    : a.reported[0]
+      ? `${esc(a.reported[0].source)}: ${link(a.reported[0].title, a.reported[0].url)}`
+      : "";
+  const links = a.links.slice(0, 2).map((l) => link(l.label, l.url)).join(" · ");
+  return `<div style="margin:0 0 12px">
+<div style="font-weight:600;color:${color}">${esc(headline(a))}</div>
+${fact ? `<div style="font-size:14px">${fact}</div>` : ""}
+${links ? `<div style="font-size:13px">${links}</div>` : ""}
+</div>`;
+}

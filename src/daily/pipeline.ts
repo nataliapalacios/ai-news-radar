@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { findCves, matchesAny } from "../alerts/match.js";
+import { type Alert, findCves, matchesAny } from "../alerts/match.js";
 import type { FeedItem } from "../collect/rss.js";
 import type { Config } from "../config/schema.js";
 import { type Article, type DropReason, Dropped } from "../extract/article.js";
@@ -80,6 +80,8 @@ export interface DailyRun {
   dropped: { url: string; title: string; source: string; reason: DropReason }[];
   missing_topics: string[];
   alerts_24h: { level: string; product: string; cve: string | null; subject_time: string }[];
+  /** Alerts not emailed on their own (delivery: red_only / daily), shown in full at the top. */
+  alerts_held?: Alert[];
   source_errors: string[];
   usage: { input: number; output: number; usd: number };
 }

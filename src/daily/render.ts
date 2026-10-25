@@ -1,5 +1,6 @@
 import { esc, link, page } from "../email/html.js";
 import type { Email } from "../email/send.js";
+import { alertDigestHtml, alertDigestText } from "../alerts/render.js";
 import type { Brief, DailyItem, DailyRun } from "./pipeline.js";
 
 const ACTION: Record<string, string> = {
@@ -21,6 +22,18 @@ export function renderDaily(run: DailyRun, tz: string): Email {
 
   const text: string[] = [];
   const html: string[] = [];
+  const held = run.alerts_held ?? [];
+  if (held.length) {
+    const red = held.filter((a) => a.level === "red").length;
+    const title = `Security alerts since the last email: ${red} confirmed, ${held.length - red} early signal${held.length - red === 1 ? "" : "s"}`;
+    text.push(title, "", ...held.flatMap((a) => [...alertDigestText(a), ""]));
+    html.push(
+      `<div style="margin:0 0 20px;padding:12px 14px;background:#fef2f2;border-left:3px solid #b91c1c">` +
+      `<h3 style="margin:0 0 10px;font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:#b91c1c">${esc(title)}</h3>` +
+      held.map(alertDigestHtml).join("") +
+      `</div>`,
+    );
+  }
   if (run.alerts_24h.length) {
     const line = `🔴 Alerts in the last 24 h: ${run.alerts_24h.map((a) => `${a.product}${a.cve ? ` ${a.cve}` : ""}`).join(", ")} (see alert emails)`;
     text.push(line, "");
@@ -52,7 +65,9 @@ export function renderDaily(run: DailyRun, tz: string): Email {
   text.push("--", footer, "AI News Radar · summaries link to the original; every quote was checked against the article.");
   html.push(`<p style="margin:24px 0 0;font-size:12px;color:#6b7280">${esc(footer)}<br>AI News Radar · summaries link to the original; every quote was checked against the article.</p>`);
 
-  return { subject: `[Radar] ${day} · ${lead}${more}`, text: text.join("\n"), html: page(`Radar ${day}`, html.join("\n")) };
+  const red = held.filter((a) => a.level === "red").length;
+  const prefix = red ? `🔴 ${red} alert${red === 1 ? "" : "s"} · ` : held.length ? `🟠 ${held.length} early signal${held.length === 1 ? "" : "s"} · ` : "";
+  return { subject: `${prefix}[Radar] ${day} · ${lead}${more}`, text: text.join("\n"), html: page(`Radar ${day}`, html.join("\n")) };
 }
 
 function briefText(b: Brief): string[] {

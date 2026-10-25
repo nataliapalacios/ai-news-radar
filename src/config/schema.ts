@@ -39,6 +39,10 @@ export const Config = z.object({
     early_signal_min_sources: z.number().int().min(1).default(2),
     kev_lookback_days: z.number().int().min(1).max(30).default(3),
     nvd_lookback_hours: z.number().int().min(1).max(168).default(6),
+    /** instant: an email per alert run · red_only: red at once, early signals in the daily · daily: everything in the daily email. */
+    delivery: z.enum(["instant", "red_only", "daily"]).default("instant"),
+    /** NVD alerts only for CVEs published this recently (old CVEs get re-modified all the time). */
+    nvd_max_age_days: z.number().int().min(1).default(14),
     quiet_hours: z.string().regex(/^\d{2}:\d{2}-\d{2}:\d{2}$/).nullable().default(null),
   }),
   daily: z.object({

@@ -178,3 +178,15 @@ describe("brief lines", () => {
     expect(b.quote).toBe("q2");
   });
 });
+
+describe("held alerts in the daily email", () => {
+  it("puts them first and flags the subject", async () => {
+    const { matchKev } = await import("../src/alerts/match.js");
+    const [a] = matchKev([{ cveID: "CVE-2026-12345", vendorProject: "PHP Group", product: "PHP", vulnerabilityName: "PHP RCE", dateAdded: "2026-10-21", shortDescription: "", requiredAction: "", dueDate: "", knownRansomwareCampaignUse: "Unknown" }], [{ name: "PHP", match: ["php"], cpe: [], nvd: true }], now, 3);
+    const out = await buildDaily([item({})], 24, none, deps());
+    const run: DailyRun = { date: "2026-10-21", generated_at: now.toISOString(), window_hours: 24, ...out, alerts_24h: [], alerts_held: [{ ...a!, emailed: false }], source_errors: [], usage: { input: 0, output: 0, usd: 0 } };
+    const email = renderDaily(run, "Europe/Madrid");
+    expect(email.subject).toMatch(/^🔴 1 alert · \[Radar\]/);
+    expect(email.text.indexOf("CVE-2026-12345")).toBeLessThan(email.text.indexOf("1 · SECURITY"));
+  });
+});

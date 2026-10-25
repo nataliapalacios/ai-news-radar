@@ -27,6 +27,8 @@ export interface Alert {
   detectedAt: string;
   /** Key of an earlier early-signal alert this one confirms. */
   supersedes?: string;
+  /** false when held for the daily email instead of sent at once (records without it were sent). */
+  emailed?: boolean;
 }
 
 const CVE_RE = /CVE-\d{4}-\d{4,7}/gi;
@@ -98,10 +100,12 @@ export function cveMatchesWatch(c: NvdCve, w: WatchItem): boolean {
   return matchesAny(c.description, w.match);
 }
 
-export function matchNvd(cves: NvdCve[], watch: WatchItem[], cvssMin: number, now: Date): Alert[] {
+export function matchNvd(cves: NvdCve[], watch: WatchItem[], cvssMin: number, now: Date, maxAgeDays = Infinity): Alert[] {
   const out: Alert[] = [];
   for (const c of cves) {
     if (c.cvss === null || c.cvss < cvssMin) continue;
+    // NVD keeps re-modifying old CVEs; a 2024 record touched today isn't news.
+    if (now.getTime() - new Date(c.published).getTime() > maxAgeDays * 86_400_000) continue;
     const w = watch.find((w) => w.nvd && cveMatchesWatch(c, w));
     if (!w) continue;
     out.push({
@@ -203,6 +207,13 @@ export function newAlerts(alerts: Alert[], seen: { has(k: string): boolean }): A
   }
   // Reds first, then by product.
   return out.sort((x, y) => (x.level === y.level ? x.product.localeCompare(y.product) : x.level === "red" ? -1 : 1));
+}
+
+export type Delivery = "instant" | "red_only" | "daily";
+
+/** Whether an alert goes out by email at once, or waits for the daily email. */
+export function sendsAtOnce(delivery: Delivery, level: Level): boolean {
+  return delivery === "instant" || (delivery === "red_only" && level === "red");
 }
 
 /** Red always sends; orange waits for the end of quiet hours (HH:MM-HH:MM in the config timezone). */

@@ -89,6 +89,8 @@ Runs every 2 hours. It's pure code, so it's free, deterministic and fast.
 - One CVE produces at most one 🔴 email and one 🟠 email. An early signal that later becomes confirmed is sent again as 🔴 and points back to the first email.
 - Every alert includes: product, CVE (if known), what is confirmed vs reported, source links, and the vendor's fix/advisory link when one exists.
 - Quiet hours are optional. 🔴 always goes out.
+- `alerts.delivery` decides how they reach you: `instant` (an email as soon as found, the default), `red_only` (confirmed at once, early signals in the next daily email) or `daily` (a single email a day, with every alert since the last one at the top).
+- NVD alerts only cover CVEs published in the last `nvd_max_age_days` (14): NVD re-modifies old CVEs all the time.
 
 **Why not wait for NVD?** NVD scoring often lags the news by days. The 🟠 lane is what would have told you about a PHP issue before the email from your provider did. That's the hypothesis to validate (see [Validation](#validation-plan-2-weeks)).
 
@@ -151,6 +153,7 @@ email_language: en
 
 alerts:
   every_hours: 2
+  delivery: instant            # instant: email as soon as found · red_only: confirmed at once, early signals in the daily · daily: one email a day, alerts at the top
   watchlist:   # platforms almost everyone runs. nvd: false = only CISA KEV + news early signals (too many CVEs otherwise)
     - { name: Microsoft,     match: [microsoft, windows, exchange server, sharepoint], nvd: false }
     - { name: Apple,         match: [apple, iphone, macos], nvd: false }
@@ -171,6 +174,7 @@ alerts:
   early_signal_min_sources: 2
   kev_lookback_days: 3
   nvd_lookback_hours: 6
+  nvd_max_age_days: 14         # ignore older CVEs that NVD merely re-modified
   quiet_hours: null
 
 daily:
@@ -396,6 +400,7 @@ In your copy, open `radar.config.example.yaml`, copy its content, then **Add fil
   - `nvd: false`: for vendors with hundreds of CVEs a month (Microsoft, Apple, Android, Chrome), only "actively exploited" (CISA KEV) and news early signals alert, not every critical score.
 
   On the last 60 days, the default list alerted on 21 of 60 days, mostly VMware, Citrix, Cisco and Ivanti. Run `npm run replay` after editing it to see how noisy your list would be.
+- `alerts.delivery`: `instant`, `red_only` or `daily`. Choose `daily` if you want **one email a day**, with alerts at the top.
 - `sources`: keep the defaults, or add any HTTPS RSS feed.
 
 Commit the file. Emails are never sent to `example.com` addresses, so nothing goes out until you set yours.
